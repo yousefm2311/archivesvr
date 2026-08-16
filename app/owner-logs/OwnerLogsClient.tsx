@@ -45,6 +45,11 @@ const formatDateTime = (value?: string) => {
   return date.toLocaleString("ar-EG");
 };
 
+const formatIp = (ip?: string) => {
+  if (!ip) return "غير متوفر";
+  return ip.replace(/^::ffff:/, '');
+};
+
 // --- Time Ago Formatter ---
 const getTimeAgo = (dateString?: string) => {
   if (!dateString) return "";
@@ -109,14 +114,14 @@ const analyzeError = (row: AuditLogRow): ErrorAnalysis | null => {
     };
   }
 
-  if (combinedText.includes("network") || combinedText.includes("fetch") || combinedText.includes("econnrefused") || combinedText.includes("timeout") || combinedText.includes("cors")) {
+  if (combinedText.includes("network") || combinedText.includes("fetch") || combinedText.includes("econnrefused") || combinedText.includes("timeout") || combinedText.includes("cors") || combinedText.includes("تعذر الاتصال") || combinedText.includes("انترنت") || combinedText.includes("إنترنت") || combinedText.includes("client_error")) {
     return {
       category: "Network",
-      categoryLabel: "فشل في اتصال الشبكة",
+      categoryLabel: "فشل في اتصال الشبكة (من جهة المستخدم)",
       textClass: "text-blue-500",
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>,
-      diagnosis: `تعذر الوصول (${extractErrorName()}). النظام لم يتمكن من استكمال الاتصال. غالباً السبب انقطاع الإنترنت، جدار الحماية، أو توقف الخدمة.`,
-      suggestedAction: "تأكد من استقرار الإنترنت لدى العميل. إذا استمرت، تحقق من حالة الخادم الأساسي (Server Status) وما إذا كان متاحاً للاستجابة."
+      diagnosis: `تعذر وصول جهاز المستخدم للخادم (${extractErrorName()}). النظام أو المتصفح لم يتمكن من استكمال الاتصال.`,
+      suggestedAction: "تأكد من استقرار شبكة الإنترنت لدى الموظف. إذا تكررت المشكلة، تحقق من حالة الخادم الأساسي وما إذا كان متاحاً للاستجابة."
     };
   }
 
@@ -374,7 +379,7 @@ export default function OwnerLogsClient() {
       escapeCsv(log.docId),
       escapeCsv(log.message),
       escapeCsv(log.reason),
-      escapeCsv(log.meta?.ip),
+      escapeCsv(formatIp(log.meta?.ip)),
       escapeCsv(log.meta?.path)
     ].join(","));
 
@@ -612,7 +617,7 @@ export default function OwnerLogsClient() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-xs">
                             <span className="font-mono bg-slate-50 text-slate-700 px-2 py-1 rounded border border-slate-200" dir="ltr">
-                              {row.meta?.ip || "غير متوفر"}
+                              {formatIp(row.meta?.ip)}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -675,7 +680,7 @@ export default function OwnerLogsClient() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                       <div>
                                         <dt className="text-xs text-slate-500 mb-1">عنوان الـ IP (الجهاز):</dt>
-                                        <dd className="font-mono bg-slate-50 text-slate-800 p-2 rounded border border-slate-200" dir="ltr">{row.meta?.ip || "غير متوفر"}</dd>
+                                        <dd className="font-mono bg-slate-50 text-slate-800 p-2 rounded border border-slate-200" dir="ltr">{formatIp(row.meta?.ip)}</dd>
                                       </div>
                                       <div>
                                         <dt className="text-xs text-slate-500 mb-1">طريقة الطلب (Method):</dt>

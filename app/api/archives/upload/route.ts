@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAuthUserFromCookies } from "@/lib/auth";
 import { recordAuditLog } from "@/lib/audit-log";
 
@@ -71,7 +71,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const incomingForm = await request.formData();
+    let incomingForm: FormData;
+    try {
+      incomingForm = await request.formData();
+    } catch (err: any) {
+      // This happens when the network drops (ECONNRESET) mid-upload or the user aborts the connection.
+      await recordAuditLog({
+        action: "archive.upload",
+        status: "failure",
+        message: "انقطع الاتصال أثناء الرفع (تعذر استلام الملف بالكامل). يرجى التحقق من الإنترنت.",
+        reason: "client_aborted_or_network_drop",
+        request,
+        clientCode,
+        details: { error: err?.message || String(err) },
+      });
+      return NextResponse.json(
+        { message: "انقطع الاتصال أثناء الرفع. تأكد من استقرار الإنترنت وحاول مجدداً.", code: "NETWORK_ABORTED" },
+        { status: 400 }
+      );
+    }
     const filesFromFile = incomingForm
       .getAll("file")
       .filter((item): item is File => item instanceof File);
@@ -168,13 +186,13 @@ export async function POST(request: Request) {
           : undefined;
 
         archiveRes = await fetch(
-          `${archiveBase}/api/archives/${clientCode}/upload`,
+          `${archiveBase}/api/archives/${encodeURIComponent(clientCode)}/upload`,
           {
             method: "POST",
             body: buildProxyForm(),
             headers: {
               ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
-              "x-client-code": clientCode,
+              "x-client-code": encodeURIComponent(clientCode),
             },
             signal: controller?.signal,
           }
@@ -269,20 +287,25 @@ export async function POST(request: Request) {
       { message: "تعذر رفع الملف إلى خدمة الأرشفة." },
       { status: 502 }
     );
-  } catch (error) {
-    console.error("Archive upload proxy failed:", error);
+  } catch (error: any) {
+    const isAborted = error?.code === 'ECONNRESET' || error?.name === 'AbortError' || error?.message?.toLowerCase().includes('aborted');
+    
+    if (!isAborted) {
+      console.error("Archive upload proxy failed:", error);
+    }
+
     await recordAuditLog({
       action: "archive.upload",
       status: "failure",
-      message: "حدث خطأ أثناء رفع الملف لخدمة الأرشفة.",
+      message: isAborted ? "تم قطع الاتصال بالخادم أثناء معالجة الملف." : "حدث خطأ أثناء رفع الملف لخدمة الأرشفة.",
       reason: error instanceof Error ? error.message : "server_error",
       user: userForLog ?? undefined,
       request,
       clientCode: clientCodeForLog ?? undefined,
     });
     return NextResponse.json(
-      { message: "حدث خطأ أثناء رفع الملف لخدمة الأرشفة." },
-      { status: 500 }
+      { message: isAborted ? "انقطع الاتصال بالخادم. حاول مجدداً." : "حدث خطأ أثناء رفع الملف لخدمة الأرشفة." },
+      { status: isAborted ? 400 : 500 }
     );
   }
 }
