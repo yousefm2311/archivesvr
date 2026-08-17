@@ -1,4 +1,4 @@
-﻿// "use client";
+// "use client";
 
 // import {
 //   DOC_TYPES,
@@ -1702,6 +1702,7 @@ export default function NewClientPage() {
   const [loading, setLoading] = useState(false);
   const [docs, setDocs] = useState<DocRowState[]>([]);
   const [saveProgress, setSaveProgress] = useState<SaveProgress | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const today = () => new Date().toISOString().slice(0, 10);
 const makeEmptyRow = (): DocRowState => ({
@@ -1778,6 +1779,75 @@ const makeEmptyRow = (): DocRowState => ({
 
   const addRow = () => {
     setDocs((prev) => [...prev, makeEmptyRow()]);
+  };
+
+  const handleFilesSelected = (files: FileList | File[] | null) => {
+    if (!files || files.length === 0) return;
+    if (!canEdit || loading) return;
+
+    const newRows: DocRowState[] = [];
+    const arr = Array.from(files);
+
+    arr.forEach((file) => {
+      if (!isPdfFile(file)) {
+        newRows.push({
+          ...makeEmptyRow(),
+          fileLabel: file.name,
+          error: "يسمح بملفات PDF فقط",
+          status: "error",
+        });
+        return;
+      }
+      if (!isFileSizeOk(file)) {
+        newRows.push({
+          ...makeEmptyRow(),
+          fileLabel: file.name,
+          error: fileSizeError,
+          status: "error",
+        });
+        return;
+      }
+      newRows.push({
+        ...makeEmptyRow(),
+        file,
+        fileLabel: file.name,
+        status: "idle",
+        error: "",
+      });
+    });
+
+    if (newRows.length > 0) {
+      setDocs((prev) => {
+        if (
+          prev.length === 1 &&
+          !prev[0].file &&
+          !prev[0].docType &&
+          !prev[0].existingPath &&
+          !prev[0].customName
+        ) {
+          return newRows;
+        }
+        return [...prev, ...newRows];
+      });
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (canEdit && !loading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelected(e.dataTransfer.files);
+    }
   };
 
   const removeRowLocal = (key: string, allowEmpty = false) => {
@@ -2400,7 +2470,26 @@ const makeEmptyRow = (): DocRowState => ({
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div
+              className={`relative space-y-3 p-2 -mx-2 rounded-xl transition-all duration-200 border-2 ${
+                isDragging
+                  ? "border-sky-500 bg-sky-50/50 dark:bg-sky-900/20 border-dashed"
+                  : "border-transparent"
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {isDragging && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm pointer-events-none">
+                  <div className="text-center">
+                    <span className="text-4xl block mb-2">📂</span>
+                    <span className="text-xl font-bold text-sky-700 dark:text-sky-400">
+                      أفلت المستندات هنا لإضافتها
+                    </span>
+                  </div>
+                </div>
+              )}
               {docs.map((row) => {
                 const showOther = row.docType === OTHER_DOC_TYPE;
                 const rowBusy =
@@ -2600,14 +2689,35 @@ const makeEmptyRow = (): DocRowState => ({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 justify-end">
+          <div className="flex flex-wrap gap-3 justify-end mt-4">
+            <input
+              id="multi-file-upload"
+              type="file"
+              multiple
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleFilesSelected(e.target.files);
+                e.target.value = ""; // Reset input
+              }}
+            />
+            <button
+              type="button"
+              disabled={!canEdit || loading}
+              onClick={() =>
+                document.getElementById("multi-file-upload")?.click()
+              }
+              className="rounded-lg border px-4 py-1.5 text-sm font-semibold hover:opacity-80 disabled:opacity-60 transition-opacity upload-files shadow-sm hover:shadow"
+            >
+              اختر عدة ملفات
+            </button>
             <button
               type="button"
               onClick={addRow}
               disabled={!canEdit || loading}
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 attention-nudge"
+              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:opacity-80 disabled:opacity-60 transition-opacity"
             >
-              إضافة مستند جديد
+              إضافة صف فارغ
             </button>
             <button
               type="button"
