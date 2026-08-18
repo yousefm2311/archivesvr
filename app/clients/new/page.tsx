@@ -1703,7 +1703,7 @@ export default function NewClientPage() {
   const [docs, setDocs] = useState<DocRowState[]>([]);
   const [saveProgress, setSaveProgress] = useState<SaveProgress | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [hoveredPreview, setHoveredPreview] = useState<string | null>(null);
+  const [activePreview, setActivePreview] = useState<string | null>(null);
 
   const today = () => new Date().toISOString().slice(0, 10);
 const makeEmptyRow = (): DocRowState => ({
@@ -2655,13 +2655,13 @@ const makeEmptyRow = (): DocRowState => ({
                         </button>
                         
                         {(row.file || row.existingPath) && (
-                          <div 
-                            className="relative flex items-center justify-center"
-                            onMouseEnter={() => setHoveredPreview(row.key)}
-                            onMouseLeave={() => setHoveredPreview(null)}
-                          >
-                            <span className="text-slate-400 hover:text-sky-500 transition-all text-xl cursor-help flex items-center justify-center">
-                              {hoveredPreview === row.key ? (
+                          <div className="relative flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setActivePreview(activePreview === row.key ? null : row.key)}
+                              className="text-slate-400 hover:text-sky-500 transition-all text-xl cursor-pointer flex items-center justify-center focus:outline-none"
+                            >
+                              {activePreview === row.key ? (
                                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in duration-200">
                                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                                   <circle cx="12" cy="12" r="3" />
@@ -2674,19 +2674,28 @@ const makeEmptyRow = (): DocRowState => ({
                                   <line x1="2" x2="22" y1="2" y2="22" />
                                 </svg>
                               )}
-                            </span>
+                            </button>
                             
-                            {hoveredPreview === row.key && (
-                              <div 
-                                className="absolute top-1/2 right-full -translate-y-1/2 w-[400px] h-[550px] z-[999] origin-right pr-3 animate-in fade-in zoom-in duration-200"
-                              >
-                                <div className="w-full h-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl rounded-xl p-2 pointer-events-auto flex flex-col">
-                                  <iframe 
-                                    src={row.file ? `${URL.createObjectURL(row.file)}#toolbar=0&navpanes=0` : `/documents/view/${row.docId}#toolbar=0&navpanes=0`} 
-                                    className="w-full h-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
-                                  />
+                            {activePreview === row.key && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-[998]"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActivePreview(null);
+                                  }}
+                                />
+                                <div 
+                                  className="absolute top-1/2 right-full -translate-y-1/2 w-[400px] h-[550px] z-[999] origin-right pr-3 animate-in fade-in zoom-in duration-200"
+                                >
+                                  <div className="w-full h-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl rounded-xl p-2 pointer-events-auto flex flex-col relative z-[1000]">
+                                    <iframe 
+                                      src={row.file ? `${URL.createObjectURL(row.file)}#toolbar=0&navpanes=0` : `/documents/view/${row.docId}#toolbar=0&navpanes=0`} 
+                                      className="w-full h-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+                                    />
+                                  </div>
                                 </div>
-                              </div>
+                              </>
                             )}
                           </div>
                         )}
