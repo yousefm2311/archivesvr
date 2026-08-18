@@ -1703,6 +1703,7 @@ export default function NewClientPage() {
   const [docs, setDocs] = useState<DocRowState[]>([]);
   const [saveProgress, setSaveProgress] = useState<SaveProgress | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [hoveredPreview, setHoveredPreview] = useState<string | null>(null);
 
   const today = () => new Date().toISOString().slice(0, 10);
 const makeEmptyRow = (): DocRowState => ({
@@ -2499,7 +2500,7 @@ const makeEmptyRow = (): DocRowState => ({
                 return (
                   <div
                     key={row.key}
-                    className={`rounded-lg border p-4 ${
+                    className={`rounded-lg border p-4 transition-all duration-300 ${
                       row.status === "error"
                         ? "border-rose-900 bg-slate-900 dark:border-rose-900 dark:bg-rose-950/40"
                         : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
@@ -2634,6 +2635,7 @@ const makeEmptyRow = (): DocRowState => ({
                           >
                             {row.fileLabel ? "تغيير الملف" : "اختر ملف"}
                           </button>
+
                           {row.fileLabel && (
                             <span className="text-xs text-slate-500 truncate max-w-[140px]">
                               {row.fileLabel}
@@ -2642,7 +2644,7 @@ const makeEmptyRow = (): DocRowState => ({
                         </div>
                       </div>
 
-                      <div className="md:col-span-1 flex justify-end">
+                      <div className="md:col-span-1 flex items-center justify-end gap-4">
                         <button
                           type="button"
                           onClick={() => handleDeleteRow(row)}
@@ -2651,6 +2653,43 @@ const makeEmptyRow = (): DocRowState => ({
                         >
                           حذف
                         </button>
+                        
+                        {(row.file || row.existingPath) && (
+                          <div 
+                            className="relative flex items-center justify-center"
+                            onMouseEnter={() => setHoveredPreview(row.key)}
+                            onMouseLeave={() => setHoveredPreview(null)}
+                          >
+                            <span className="text-slate-400 hover:text-sky-500 transition-all text-xl cursor-help flex items-center justify-center">
+                              {hoveredPreview === row.key ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in duration-200">
+                                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in duration-200">
+                                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                                  <line x1="2" x2="22" y1="2" y2="22" />
+                                </svg>
+                              )}
+                            </span>
+                            
+                            {hoveredPreview === row.key && (
+                              <div 
+                                className="absolute top-1/2 right-full -translate-y-1/2 w-[400px] h-[550px] z-[999] origin-right pr-3 animate-in fade-in zoom-in duration-200"
+                              >
+                                <div className="w-full h-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl rounded-xl p-2 pointer-events-auto flex flex-col">
+                                  <iframe 
+                                    src={row.file ? `${URL.createObjectURL(row.file)}#toolbar=0&navpanes=0` : `/documents/view/${row.docId}#toolbar=0&navpanes=0`} 
+                                    className="w-full h-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {row.status && row.status !== "idle" ? (
